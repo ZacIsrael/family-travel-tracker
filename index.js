@@ -31,7 +31,9 @@ const countries = "countries";
 // name of the table in the postgreSQL database that stores the users
 const usersTable = "users";
 
-// let currentUserId = 1;
+// used to store the user's id; useful for when we wannt to add a country for a specific user
+// we must do it this way because of how the EJS files have been implemented
+let currentUserId = -1;
 
 // variable that will be used to store the users returned from queries
 let users = [
@@ -48,16 +50,18 @@ async function checkVisisted() {
   return countries;
 }
 
-async function getAllUsers () {
+async function getAllUsers() {
   let allUsers = [];
   try {
-  let result = await db.query(`SELECT * FROM ${usersTable}`);
-  allUsers = result.rows;
-  } catch(err){
+    let result = await db.query(`SELECT * FROM ${usersTable}`);
+    allUsers = result.rows;
+  } catch (err) {
     console.error(`getAllUsers(): error retrieving all of the users`);
   }
   return allUsers;
 }
+
+// default get Route
 app.get("/", async (req, res) => {
   const countries = await checkVisisted();
   try {
@@ -71,35 +75,73 @@ app.get("/", async (req, res) => {
     console.error("Default GET Route; Error executing query: ", err.stack);
   }
 
+  // Disregard the code below. I misinterpreted how the app is supposed to function
+  /*
+  let color = "";
+  
+  if(currentUserId === -1){
+    // page has just been loaded up for the first time and no user has been selected yet
+    color = "teal"
+  } else {
+    console.log(`Default GET Route: currentUserId = `, currentUserId)
+    // a user has been selected, retrieve its color and send it to the EJS file
+    try {
+      const result = await db.query(`SELECT * FROM ${usersTable} WHERE id = ${currentUserId}`);
+      if (result.rowCount !== 1){
+        console.error();
+      } else {
+        // set the color to that user's color
+        color = result.rows[0].color;
+      }
+    } catch(err){
+      console.log(`Default GET Route; Error retrieving user with id = ${currentUserId}: `, err.stack)
+    }
+  } 
+  */
+
   res.render("index.ejs", {
     countries: countries,
     total: countries.length,
     users: users,
     color: "teal",
+    // color: color,
   });
 });
 app.post("/add", async (req, res) => {
-  const input = req.body["country"];
-
-  try {
-    const result = await db.query(
-      "SELECT country_code FROM countries WHERE LOWER(country_name) LIKE '%' || $1 || '%';",
-      [input.toLowerCase()]
+  if (currentUserId === -1) {
+    // must select a user before trying to add a country
+    console.error(
+      `Error in \'/add\' route: You can't add a country withput selecting a user first. Please select a user`
     );
+    // return to the default get route
+    res.redirect("/");
+  } 
+  
+  else {
+    const input = req.body["country"];
+    console.log(`\'/add\' route: req.body = `, req.body);
 
-    const data = result.rows[0];
-    const countryCode = data.country_code;
     try {
-      await db.query(
-        "INSERT INTO visited_countries (country_code) VALUES ($1)",
-        [countryCode]
+      const result = await db.query(
+        "SELECT country_code FROM countries WHERE LOWER(country_name) LIKE '%' || $1 || '%';",
+        [input.toLowerCase()]
       );
-      res.redirect("/");
+
+      const data = result.rows[0];
+      const countryCode = data.country_code;
+      try {
+        await db.query(
+          "INSERT INTO visited_countries (country_code, user_id) VALUES ($1, $2)",
+          [countryCode, currentUserId]
+        );
+        // reload the specified user's page
+        res.redirect("/");
+      } catch (err) {
+        console.log(err);
+      }
     } catch (err) {
       console.log(err);
     }
-  } catch (err) {
-    console.log(err);
   }
 });
 
@@ -126,7 +168,10 @@ app.post("/user", async (req, res) => {
     users = await getAllUsers();
   } catch (err) {
     // an error occured
-    console.error(`\'/user\' POST Route; Error executing query that retrives the user with id = ${userId}: `, err.stack);
+    console.error(
+      `\'/user\' POST Route; Error executing query that retrives the user with id = ${userId}: `,
+      err.stack
+    );
   }
 
   // if we reach this point, needUser is not undefined
@@ -154,7 +199,10 @@ app.post("/user", async (req, res) => {
       console.log("visitedCountriesByUser = ", visitedCountriesByUserQuery);
     } catch (err) {
       // an error occured
-      console.error(`\'/user\' POST Route; Error executing query that retrieves the countries for user with id = ${userId}: `, err.stack);
+      console.error(
+        `\'/user\' POST Route; Error executing query that retrieves the countries for user with id = ${userId}: `,
+        err.stack
+      );
     }
 
     // the rows returned from the request
@@ -166,15 +214,17 @@ app.post("/user", async (req, res) => {
       visitedCountries.push(val.country_code);
     });
 
+    // set the currentUserId to this user's id
+    currentUserId = userId;
+
     // send the necessary data to the index ejs file
     res.render("index.ejs", {
       countries: visitedCountries,
       total: visitedCountries.length,
       users: users,
+      // color: "teal",
       color: retrievedUser.color,
     });
-
-
   }
 });
 
