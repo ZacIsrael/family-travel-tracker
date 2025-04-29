@@ -22,11 +22,21 @@ db.connect();
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static("public"));
 
+// name of the table in the postgreSQL database that stores the codes of the visited countries
+const visitedCountriesTable = "visited_countries";
+
+// name of the table in the postgreSQL database that stores all the countries & their respective codes
+const countries = "countries";
+
+// name of the table in the postgreSQL database that stores the users
+const usersTable = "users";
+
+
 let currentUserId = 1;
 
 let users = [
-  { id: 1, name: "Angela", color: "teal" },
-  { id: 2, name: "Jack", color: "powderblue" },
+  // { id: 1, name: "Angela", color: "teal" },
+  // { id: 2, name: "Jack", color: "powderblue" },
 ];
 
 async function checkVisisted() {
@@ -39,6 +49,15 @@ async function checkVisisted() {
 }
 app.get("/", async (req, res) => {
   const countries = await checkVisisted();
+  try {
+    const allUsers = await db.query(`SELECT * FROM ${usersTable}`);
+    console.log('allUsers.rows = ', allUsers.rows);
+    users = allUsers.rows;
+  } catch(err){
+    // an error occured
+    console.error("Default GET Route; Error executing query: ", err.stack);
+  }
+
   res.render("index.ejs", {
     countries: countries,
     total: countries.length,
@@ -70,11 +89,19 @@ app.post("/add", async (req, res) => {
     console.log(err);
   }
 });
-app.post("/user", async (req, res) => {});
 
+// adds a user
+app.post("/user", async (req, res) => {
+  console.log('req.body = ', req.body);
+
+});
+
+// render new.ejs
 app.post("/new", async (req, res) => {
   //Hint: The RETURNING keyword can return the data that was inserted.
   //https://www.postgresql.org/docs/current/dml-returning.html
+
+
 });
 
 app.listen(port, () => {
