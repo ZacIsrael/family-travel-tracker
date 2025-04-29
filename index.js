@@ -50,8 +50,10 @@ async function checkVisisted() {
 app.get("/", async (req, res) => {
   const countries = await checkVisisted();
   try {
+    // retrieve the users from the users table in the postgreSQL database
     const allUsers = await db.query(`SELECT * FROM ${usersTable}`);
     console.log('allUsers.rows = ', allUsers.rows);
+    // assign the users variable to the rows that were returned from the query
     users = allUsers.rows;
   } catch(err){
     // an error occured
