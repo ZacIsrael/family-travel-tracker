@@ -47,6 +47,17 @@ async function checkVisisted() {
   });
   return countries;
 }
+
+async function getAllUsers () {
+  let allUsers = [];
+  try {
+  let result = await db.query(`SELECT * FROM ${usersTable}`);
+  allUsers = result.rows;
+  } catch(err){
+    console.error(`getAllUsers(): error retrieving all of the users`);
+  }
+  return allUsers;
+}
 app.get("/", async (req, res) => {
   const countries = await checkVisisted();
   try {
@@ -109,7 +120,10 @@ app.post("/user", async (req, res) => {
     console.log("neededUser = ", neededUser);
 
     // variable that stores the user and will be sent to the ejs file
-    users = neededUser.rows;
+    // users = neededUser.rows;
+
+    // variable that stores the users and will be sent to the ejs file
+    users = await getAllUsers();
   } catch (err) {
     // an error occured
     console.error(`\'/user\' POST Route; Error executing query that retrives the user with id = ${userId}: `, err.stack);
@@ -164,7 +178,7 @@ app.post("/user", async (req, res) => {
   }
 });
 
-// render new.ejs
+// adds a new render new.ejs
 app.post("/new", async (req, res) => {
   //Hint: The RETURNING keyword can return the data that was inserted.
   //https://www.postgresql.org/docs/current/dml-returning.html
