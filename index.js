@@ -250,6 +250,12 @@ app.post("/new", async (req, res) => {
   console.log(`\'/new\' route: req.body = `, req.body);
   let newUserName = req.body.name;
   let newUserColor = req.body.color;
+
+  // add the user to the users table
+
+  // set the currentUserId to the id returned from the db.query
+
+  // redirect to the home page
   
 });
 
