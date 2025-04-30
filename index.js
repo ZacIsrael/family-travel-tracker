@@ -75,30 +75,6 @@ app.get("/", async (req, res) => {
     console.error("Default GET Route; Error executing query: ", err.stack);
   }
 
-  // Disregard the code below. I misinterpreted how the app is supposed to function
-  /*
-  let color = "";
-  
-  if(currentUserId === -1){
-    // page has just been loaded up for the first time and no user has been selected yet
-    color = "teal"
-  } else {
-    console.log(`Default GET Route: currentUserId = `, currentUserId)
-    // a user has been selected, retrieve its color and send it to the EJS file
-    try {
-      const result = await db.query(`SELECT * FROM ${usersTable} WHERE id = ${currentUserId}`);
-      if (result.rowCount !== 1){
-        console.error();
-      } else {
-        // set the color to that user's color
-        color = result.rows[0].color;
-      }
-    } catch(err){
-      console.log(`Default GET Route; Error retrieving user with id = ${currentUserId}: `, err.stack)
-    }
-  } 
-  */
-
   res.render("index.ejs", {
     countries: countries,
     total: countries.length,
@@ -132,7 +108,7 @@ app.post("/add", async (req, res) => {
           "INSERT INTO visited_countries (country_code, user_id) VALUES ($1, $2)",
           [countryCode, currentUserId]
         );
-        // reload the specified user's page
+        // go back to the home page
         res.redirect("/");
       } catch (err) {
         console.log(err);
@@ -148,10 +124,10 @@ app.post("/user", async (req, res) => {
   console.log("req.body = ", req.body);
 
   if (req.body.hasOwnProperty("add")) {
-    // If the the body of the request contains the field "add", that means that the 
+    // If the the body of the request contains the field "add", that means that the
     // user clicked the "Add Family Member" button.
 
-    // render new.ejs file 
+    // render new.ejs file
     res.render("new.ejs", {});
   } else {
     if (req.body.hasOwnProperty("user")) {
@@ -236,7 +212,9 @@ app.post("/user", async (req, res) => {
       }
     } else {
       // for some reason, the user's id is not passed in the body of the request
-      console.error(`\'user\' route eroor: the user's id was not passed in the body of the request`);
+      console.error(
+        `\'user\' route eroor: the user's id was not passed in the body of the request`
+      );
     }
   }
 });
@@ -248,15 +226,47 @@ app.post("/new", async (req, res) => {
 
   // Debugging
   console.log(`\'/new\' route: req.body = `, req.body);
-  let newUserName = req.body.name;
-  let newUserColor = req.body.color;
-
+  let userName = req.body.name;
+  let userColor = req.body.color;
+  // variable to store the result from the query
+  let result;
   // add the user to the users table
+  try {
+    // RETURNING keyword returns the data that was inserted.
+    result = await db.query(
+      `INSERT INTO ${usersTable} (name, color) VALUES ($1, $2) RETURNING *`,
+      [userName, userColor]
+    );
 
-  // set the currentUserId to the id returned from the db.query
+    console.log('result = ', result);
 
-  // redirect to the home page
-  
+    // variable that stores the users
+    // users = await getAllUsers();
+  } catch (err) {
+    // an error occured
+    console.error(
+      `\'/new\' POST Route; Error executing query that adds the new user to the database`,
+      err.stack
+    );
+  }
+
+  if (typeof result === "undefined" || result.rowCount !== 1) {
+    // error; problem with database because more than 1 user or no user was added to the database
+    console.error(
+      `Database Error: The ${usersTable} table either added more than 1 user or did not add a user.`
+    );
+  } else {
+    // variable to store the user that gets returned from the database
+    let newUser = result.rows[0];
+    console.log("newUser = ", newUser);
+
+    // set the currentUserId to the id returned from the db.query
+    currentUserId = newUser.id;
+
+    // Redirect to the home page.
+    // The home page should now show the new user as a tab
+    res.redirect("/");
+  }
 });
 
 app.listen(port, () => {
