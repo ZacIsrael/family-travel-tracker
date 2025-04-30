@@ -95,26 +95,34 @@ app.post("/add", async (req, res) => {
     const input = req.body["country"];
     console.log(`\'/add\' route: req.body = `, req.body);
 
-    try {
-      const result = await db.query(
-        "SELECT country_code FROM countries WHERE LOWER(country_name) LIKE '%' || $1 || '%';",
-        [input.toLowerCase()]
+    if (input.trim().length === 0) {
+      // user put space(s) as the country to be added
+      console.error(
+        `POST \'/add\' route: Please enter a country before clicking the \'add\' button.`
       );
-
-      const data = result.rows[0];
-      const countryCode = data.country_code;
+      
+    } else {
       try {
-        await db.query(
-          "INSERT INTO visited_countries (country_code, user_id) VALUES ($1, $2)",
-          [countryCode, currentUserId]
+        const result = await db.query(
+          "SELECT country_code FROM countries WHERE LOWER(country_name) LIKE '%' || $1 || '%';",
+          [input.toLowerCase()]
         );
-        // go back to the home page
-        res.redirect("/");
+
+        const data = result.rows[0];
+        const countryCode = data.country_code;
+        try {
+          await db.query(
+            "INSERT INTO visited_countries (country_code, user_id) VALUES ($1, $2)",
+            [countryCode, currentUserId]
+          );
+          // go back to the home page
+          res.redirect("/");
+        } catch (err) {
+          console.log(err);
+        }
       } catch (err) {
         console.log(err);
       }
-    } catch (err) {
-      console.log(err);
     }
   }
 });
@@ -238,7 +246,7 @@ app.post("/new", async (req, res) => {
       [userName, userColor]
     );
 
-    console.log('result = ', result);
+    console.log("result = ", result);
 
     // variable that stores the users
     // users = await getAllUsers();
